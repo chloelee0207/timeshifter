@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!--artifact-start-->
-<title>KL → London Body Clock</title>
+<title>Body Clock Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -126,269 +126,761 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
 .notes ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .fine{font-size:12px;color:var(--muted);margin-top:18px}
 @media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
+
+/* trips + form */
+.tripbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.tripbar select{flex:1 1 200px;min-width:0;font:500 14px var(--body);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.btn{font:600 14px var(--body);border-radius:10px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.btn.danger{color:var(--now);border-color:var(--now)}
+.btn.link{border:0;background:none;padding:6px 4px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,.tripbar select:focus-visible,.f input:focus-visible{outline:2px solid var(--now);outline-offset:2px}
+.panel{background:var(--card);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:18px;margin-bottom:22px;border:1px solid var(--line)}
+.panel h2{font-size:22px}
+.step{display:flex;flex-direction:column;gap:10px}
+.step h3{font:600 15px var(--body)}
+.step .hint{color:var(--muted);font-size:13.5px;margin:0}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px dashed var(--line);border-radius:14px;padding:20px 14px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px}
+.drop.over{border-color:var(--now);color:var(--ink)}
+.drop b{color:var(--ink);font-size:15px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs img{width:64px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.status{font-size:13.5px;color:var(--muted);margin:0}
+.status.err{color:var(--now)}
+.leg{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.leghead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.leghead b{font:600 14px var(--body)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f label{font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.f input{font:500 15px var(--body);color:var(--ink);background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:9px 10px;width:100%;min-width:0}
+.check{display:flex;gap:10px;align-items:center;font-size:14.5px}
+.check input{width:20px;height:20px;accent-color:var(--mel)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--now)}
 </style>
 <!--artifact-head-end-->
 </head>
 <body>
 <!--artifact-body-start-->
 <div class="wrap">
-  <header class="top">
-    <div class="route">Kuala Lumpur <span>→</span> London</div>
-    <div class="sub">SQ127 · SQ314 via Singapore · 23–24 Sep 2026 · London is 7 hours behind KL</div>
-  </header>
-
-  <div class="bar">
-    <div class="seg" role="group" aria-label="Show times in">
-      <button id="z-kl" type="button" data-z="kl">KL time</button>
-      <button id="z-lon" type="button" data-z="lon">London time</button>
-    </div>
-    <button class="jump" id="jump" type="button">Jump to now ↓</button>
+  <div class="tripbar">
+    <select id="trip-select" aria-label="Choose a trip"></select>
+    <button class="btn primary" id="new-trip" type="button">+ New trip</button>
   </div>
 
-  <section class="nowcard" aria-live="polite">
-    <div class="nowhead">
-      <span class="eyebrow">Right now</span>
-      <span class="clock mono" id="clock"></span>
+  <section class="panel" id="editor" hidden>
+    <h2 id="editor-title">New trip</h2>
+
+    <div class="step" id="shot-step">
+      <h3>1 · Add screenshots of your booking</h3>
+      <label class="drop" id="drop" for="shot-input">
+        <b>Tap to choose screenshots</b>
+        <span>Booking email, airline app or boarding pass. You can add more than one.</span>
+      </label>
+      <input id="shot-input" type="file" accept="image/*" multiple hidden>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="actions">
+        <button class="btn primary" id="read-shots" type="button" disabled>Read my flights</button>
+        <button class="btn link" id="stop-read" type="button" hidden>Stop</button>
+      </div>
+      <p class="status" id="shot-status"></p>
     </div>
-    <div class="doing" id="doing"></div>
-    <div class="next" id="next"></div>
+
+    <div class="step">
+      <h3 id="legs-title">2 · Check your flights</h3>
+      <p class="hint">Use the local time at each airport, as shown on your booking.</p>
+      <div id="legs"></div>
+      <div class="actions"><button class="btn" id="add-leg" type="button">+ Add a flight</button></div>
+    </div>
+
+    <div class="step">
+      <h3 id="sleep-title">3 · Your usual sleep at home</h3>
+      <div class="grid">
+        <div class="f"><label for="f-bed">Usual bedtime</label><input id="f-bed" type="time" value="23:00"></div>
+        <div class="f"><label for="f-wake">Usual wake-up</label><input id="f-wake" type="time" value="07:00"></div>
+      </div>
+      <label class="check"><input id="f-mel" type="checkbox" checked> I can take melatonin</label>
+      <div class="grid"><div class="f"><label for="f-dose">Melatonin dose</label><input id="f-dose" type="text" value="1 mg"></div></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="make-plan" type="button">Make my plan</button>
+      <button class="btn link" id="cancel-edit" type="button">Cancel</button>
+    </div>
+    <p class="status err" id="form-error" hidden></p>
   </section>
 
-  <details class="legend" id="legend">
-    <summary>What the colours mean</summary>
-    <div class="lg" id="lg"></div>
-  </details>
+  <div id="plan-view">
+    <header class="top">
+      <div class="route" id="route"></div>
+      <div class="sub" id="route-sub"></div>
+      <div class="actions" id="trip-actions"></div>
+    </header>
 
-  <main id="days"></main>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Show times in">
+        <button id="z-a" type="button" data-z="a"></button>
+        <button id="z-b" type="button" data-z="b"></button>
+      </div>
+      <button class="jump" id="jump" type="button">Jump to now ↓</button>
+    </div>
 
-  <section class="notes">
-    <h2>Why it's set up this way</h2>
-    <div>
-      <h3>You're flying west, so your body clock has to move later</h3>
-      <p>London is 7 hours behind KL. Going west means staying up later and sleeping in, which the body does more easily than the reverse. That's why the plan has you sleeping late this morning and staying awake in the London evening.</p>
-    </div>
-    <div>
-      <h3>Light matters most</h3>
-      <p>Daylight at the right time moves your clock faster than anything else. At the wrong time it pushes you back the other way. Sunglasses are for the "avoid light" blocks. In the "get light" blocks, go outside if you can. Even a cloudy London day is brighter than indoor light.</p>
-    </div>
-    <div>
-      <h3>Melatonin (your 1&nbsp;mg): only if you wake in the night</h3>
-      <ul>
-        <li><b>Don't</b> take it before your flights or to sleep on the plane. When you're flying west, melatonin in the evening pulls your clock the wrong way.</li>
-        <li><b>Do</b> take it if you wake up in London between about 1 and 4&nbsp;am and can't get back to sleep within about 20 minutes.</li>
-        <li>After 4&nbsp;am, skip it, because you'd still be groggy when you get up. One 1&nbsp;mg fast-release tablet is a sensible dose. Low doses work well for jet lag.</li>
-      </ul>
-    </div>
-    <div>
-      <h3>Small things that help</h3>
-      <ul>
-        <li>Drink water on both flights. Keep alcohol to a minimum; it breaks up your sleep.</li>
-        <li>Pack an eye mask and earplugs for the long sleep on SQ314.</li>
-        <li>From landing, eat meals at normal London times.</li>
-        <li>On day 1, a short nap is fine but keep it under 20 minutes. Longer naps make the evening harder.</li>
-      </ul>
-    </div>
-  </section>
+    <section class="nowcard" aria-live="polite">
+      <div class="nowhead">
+        <span class="eyebrow">Right now</span>
+        <span class="clock mono" id="clock"></span>
+      </div>
+      <div class="doing" id="doing"></div>
+      <div class="next" id="next"></div>
+    </section>
 
-  <p class="fine">Today and the flights follow your Timeshifter plan. The days after landing use the same approach: get light in the London afternoon and evening, avoid early-morning light for a couple of days, no coffee after 2pm, and a slightly later bedtime each night. This is general guidance, not medical advice. If you take other medication, check with a pharmacist before using melatonin.</p>
+    <details class="legend" id="legend">
+      <summary>What the colours mean</summary>
+      <div class="lg" id="lg"></div>
+    </details>
+
+    <main id="days"></main>
+
+    <section class="notes" id="notes"></section>
+    <p class="fine" id="fine"></p>
+  </div>
 </div>
-
+<datalist id="tz-list"></datalist>
 <script>
 (function(){
-  const OFF = { kl: 8, lon: 1 }; // UTC offsets on these dates (London is on BST until 25 Oct)
-  const ZN = { kl: "KL", lon: "London" };
-  const at = (z, d, hm) => { const [y,m,dd]=d.split("-").map(Number); const [h,mi]=hm.split(":").map(Number); return Date.UTC(y,m-1,dd,h,mi) - OFF[z]*3600e3; };
-  const K = (d,hm)=>at("kl",d,hm), L = (d,hm)=>at("lon",d,hm);
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const HR = 3600e3, MIN = 6e4;
+  const r15 = t => Math.round(t / (15*MIN)) * 15*MIN;
 
+  // ---------- time zone helpers (DST-aware via Intl) ----------
+  const fmts = {};
+  function offMin(tz, t){
+    const f = fmts[tz] || (fmts[tz] = new Intl.DateTimeFormat("en-US", {timeZone: tz, timeZoneName: "longOffset"}));
+    const n = (f.formatToParts(new Date(t)).find(p => p.type === "timeZoneName") || {}).value || "";
+    const m = n.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+    return m ? (m[1] === "-" ? -1 : 1) * (+m[2]*60 + +(m[3] || 0)) : 0;
+  }
+  function validTz(tz){ if(!tz) return false; try{ new Intl.DateTimeFormat("en-US", {timeZone: tz}); return true; }catch(e){ return false; } }
+  function at(tz, d, hhmm){
+    const [y,mo,dd] = d.split("-").map(Number), [h,mi] = hhmm.split(":").map(Number);
+    const g = Date.UTC(y, mo-1, dd, h, mi);
+    let t = g - offMin(tz, g)*MIN; t = g - offMin(tz, t)*MIN; return t;
+  }
+  const atLocal = (tz, dt) => at(tz, dt.slice(0,10), dt.slice(11,16));
+  const sh = (t, tz) => new Date(t + offMin(tz, t)*MIN);
+  const dstr = (t, tz) => sh(t, tz).toISOString().slice(0,10);
+  function addDays(d, n){ const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0,10); }
+  function hm(t, tz){ const d = sh(t, tz); let h = d.getUTCHours(), m = d.getUTCMinutes(); const ap = h < 12 ? "am" : "pm"; h = h % 12 || 12; return h + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
+  function hmStr(s){ const [h,m] = s.split(":").map(Number); return ((h%12)||12) + (m ? ":" + String(m).padStart(2,"0") : "") + (h < 12 ? "am" : "pm"); }
+  const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function dayLabel(d){ const x = new Date(d + "T12:00:00Z"); return `${DOW[x.getUTCDay()]}, ${MON[x.getUTCMonth()]} ${x.getUTCDate()}`; }
+  function dur(ms){ const m = Math.round(ms/MIN); if(m < 60) return m + " min"; if(m >= 48*60) return Math.round(m/1440) + " days"; const h = Math.floor(m/60), r = m % 60; return h + "h" + (r ? " " + r + "m" : ""); }
+  const hrs = x => { const h = Math.round(x*2)/2; return (h % 1 ? h.toFixed(1) : h) + (h === 1 ? " hour" : " hours"); };
+  const nowDate = tz => dstr(Date.now(), tz || Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+  // ---------- icons ----------
   const ICON = {
     sleep:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>',
     light:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
     dark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4 4l16 16"/></svg>',
     caf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" fill="currentColor"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3c0 1.5 1 1.5 1 3M12 3c0 1.5 1 1.5 1 3"/></svg>',
     nocaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 11h1.5a2.5 2.5 0 0 1 0 5H16M3 3l18 18"/></svg>',
-    mel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M9.5 8.3l4.2 6" /></svg>',
+    mel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M9.5 8.3l4.2 6"/></svg>',
     flight:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>'
   };
-  const iconFor = k => ICON[k==="plane"?"sleep":k];
+  const iconFor = k => ICON[k === "plane" ? "sleep" : k];
+  const LEG = [["sleep","Sleep"],["plane","Sleep on the plane"],["light","Get bright light"],["dark","Avoid bright light"],
+    ["caf","Caffeine OK"],["nocaf","No caffeine"],["mel","Melatonin"],["flight","Flight"]];
+  $("#lg").innerHTML = LEG.map(([k,t]) => `<div><span class="ic sm k-${k}">${iconFor(k)}</span>${t}</div>`).join("");
 
-  // kind: sleep | plane | light | dark | caf | nocaf | mel | flight ; mark = single moment
-  const E = [
-    {k:"sleep", s:K("2026-09-23","09:00"), e:K("2026-09-23","13:00"), t:"Sleep in until 1pm",
-      d:"No early alarm. If you're already up, lie back down in a dark room, or at least keep the lights low and stay indoors."},
-    {k:"dark",  s:K("2026-09-23","13:00"), e:K("2026-09-23","17:00"), t:"Avoid bright light",
-      d:"Wear sunglasses outside and don't sit by a sunny window. Normal indoor light is fine."},
-    {k:"caf",   s:K("2026-09-23","13:00"), e:K("2026-09-23","22:00"), t:"Coffee / tea OK", lane:1,
-      d:"Have caffeine if you want it."},
-    {k:"flight",s:K("2026-09-23","20:00"), mark:true, t:"Be at KLIA", d:"SQ127 leaves at 10:00pm (KL). Online check-in closes 1.5 hours before."},
-    {k:"flight",s:K("2026-09-23","22:00"), e:K("2026-09-23","23:20"), t:"SQ127 · KUL → SIN", d:"The short first flight."},
-    {k:"sleep", s:K("2026-09-23","22:15"), e:K("2026-09-23","22:45"), t:"Short nap on SQ127",
-      d:"About 30 minutes if you can. Don't worry if you can't."},
-    {k:"caf",   s:K("2026-09-23","23:00"), e:K("2026-09-24","05:00"), t:"Coffee / tea OK", lane:1,
-      d:"Caffeine helps you stay alert through the Changi transfer."},
-    {k:"light", s:K("2026-09-24","02:00"), e:K("2026-09-24","03:00"), t:"Stay in bright light",
-      d:"Stay in the bright gate area at Changi and keep the reading light on as SQ314 takes off."},
-    {k:"flight",s:K("2026-09-24","02:40"), e:L("2026-09-24","09:40"), t:"SQ314 · SIN → LGW", d:"14 hours. Set your watch to London time when you board."},
-    {k:"plane", s:K("2026-09-24","03:30"), e:K("2026-09-24","08:00"), t:"Sleep on the plane",
-      d:"Eye mask and earplugs. Skip the melatonin. If you can't sleep, rest with your eyes closed."},
-    {k:"nocaf", s:K("2026-09-24","05:15"), e:K("2026-09-24","14:00"), t:"No caffeine", lane:1,
-      d:"No coffee, tea, cola or chocolate drinks. Caffeine now would spoil the sleep before landing."},
-    {k:"light", s:K("2026-09-24","08:30"), e:K("2026-09-24","14:00"), t:"Stay awake with light on",
-      d:"Reading light on, watch films, walk the aisle. The cabin will be dark, but keep your own light on."},
-    {k:"sleep", s:K("2026-09-24","14:30"), e:L("2026-09-24","09:40"), t:"Sleep until landing",
-      d:"Final sleep block. Wake up for landing at Gatwick."},
+  // ---------- the KL → London trip, as planned in Timeshifter ----------
+  const KLT = "Asia/Kuala_Lumpur", LDN = "Europe/London";
+  const K = (d,t) => at(KLT,d,t), L = (d,t) => at(LDN,d,t);
+  const PRESET = {
+    id: "kl-london-2026-09", preset: true, title: "Kuala Lumpur → London · 23 Sep 2026",
+    homeCity: "Kuala Lumpur", homeTz: KLT, destCity: "London", destTz: LDN, dose: "1 mg", mel: true,
+    legs: [
+      {flight:"SQ 127", from:"KUL", fromCity:"Kuala Lumpur", fromTz:KLT, dep:"2026-09-23T22:00", to:"SIN", toCity:"Singapore", toTz:"Asia/Singapore", arr:"2026-09-23T23:20"},
+      {flight:"SQ 314", from:"SIN", fromCity:"Singapore", fromTz:"Asia/Singapore", dep:"2026-09-24T02:40", to:"LGW", toCity:"London", toTz:LDN, arr:"2026-09-24T09:40"}
+    ],
+    events: () => [
+      {k:"sleep", s:K("2026-09-23","09:00"), e:K("2026-09-23","13:00"), t:"Sleep in until 1pm", d:"No early alarm. If you're already up, lie back down in a dark room, or at least keep the lights low and stay indoors."},
+      {k:"dark", s:K("2026-09-23","13:00"), e:K("2026-09-23","17:00"), t:"Avoid bright light", d:"Wear sunglasses outside and don't sit by a sunny window. Normal indoor light is fine."},
+      {k:"caf", s:K("2026-09-23","13:00"), e:K("2026-09-23","22:00"), t:"Coffee / tea OK", d:"Have caffeine if you want it."},
+      {k:"flight", s:K("2026-09-23","20:00"), mark:true, t:"Be at KLIA", d:"SQ127 leaves at 10:00pm (KL). Online check-in closes 1.5 hours before."},
+      {k:"flight", s:K("2026-09-23","22:00"), e:K("2026-09-23","23:20"), t:"SQ127 · KUL → SIN", d:"The short first flight."},
+      {k:"sleep", s:K("2026-09-23","22:15"), e:K("2026-09-23","22:45"), t:"Short nap on SQ127", d:"About 30 minutes if you can. Don't worry if you can't."},
+      {k:"caf", s:K("2026-09-23","23:00"), e:K("2026-09-24","05:00"), t:"Coffee / tea OK", d:"Caffeine helps you stay alert through the Changi transfer."},
+      {k:"light", s:K("2026-09-24","02:00"), e:K("2026-09-24","03:00"), t:"Stay in bright light", d:"Stay in the bright gate area at Changi and keep the reading light on as SQ314 takes off."},
+      {k:"flight", s:K("2026-09-24","02:40"), e:L("2026-09-24","09:40"), t:"SQ314 · SIN → LGW", d:"14 hours. Set your watch to London time when you board."},
+      {k:"plane", s:K("2026-09-24","03:30"), e:K("2026-09-24","08:00"), t:"Sleep on the plane", d:"Eye mask and earplugs. Skip the melatonin. If you can't sleep, rest with your eyes closed."},
+      {k:"nocaf", s:K("2026-09-24","05:15"), e:K("2026-09-24","14:00"), t:"No caffeine", d:"No coffee, tea, cola or chocolate drinks. Caffeine now would spoil the sleep before landing."},
+      {k:"light", s:K("2026-09-24","08:30"), e:K("2026-09-24","14:00"), t:"Stay awake with light on", d:"Reading light on, watch films, walk the aisle. The cabin will be dark, but keep your own light on."},
+      {k:"sleep", s:K("2026-09-24","14:30"), e:L("2026-09-24","09:40"), t:"Sleep until landing", d:"Final sleep block. Wake up for landing at Gatwick."},
+      {k:"flight", s:L("2026-09-24","09:40"), mark:true, t:"Land at Gatwick", d:"You're on London time from now on."},
+      {k:"caf", s:L("2026-09-24","09:40"), e:L("2026-09-24","14:00"), t:"Coffee OK, last cup by 2pm", d:"Caffeine helps you get through today. None after 2pm or it'll affect tonight's sleep."},
+      {k:"light", s:L("2026-09-24","10:00"), e:L("2026-09-24","18:00"), t:"Get outside in daylight", d:"The most important thing today. Walk, sit in a park, do errands outside. Aim for several hours in total."},
+      {k:"sleep", s:L("2026-09-24","13:00"), e:L("2026-09-24","13:20"), t:"Power nap", opt:true, d:"Only if you're struggling. Set an alarm for 20 minutes."},
+      {k:"sleep", s:L("2026-09-24","22:00"), e:L("2026-09-25","07:00"), t:"Bedtime", d:"Try to stay up until 10pm. Evening light is fine these first nights."},
+      {k:"mel", s:L("2026-09-25","01:00"), e:L("2026-09-25","04:00"), t:"Awake and can't get back to sleep? 1 mg melatonin", opt:true, d:"Only if you've been awake about 20 minutes. Don't take it after 4am."},
+      {k:"dark", s:L("2026-09-25","07:00"), e:L("2026-09-25","09:00"), t:"Go easy on morning light", d:"Sunglasses if you go out early. Indoor light is fine."},
+      {k:"caf", s:L("2026-09-25","07:00"), e:L("2026-09-25","14:00"), t:"Coffee OK, last cup by 2pm", d:""},
+      {k:"light", s:L("2026-09-25","12:00"), e:L("2026-09-25","19:00"), t:"Get outside in daylight", d:"Afternoon and early-evening light is what helps most today."},
+      {k:"sleep", s:L("2026-09-25","22:30"), e:L("2026-09-26","07:00"), t:"Bedtime", d:""},
+      {k:"mel", s:L("2026-09-26","01:00"), e:L("2026-09-26","04:00"), t:"Awake and can't get back to sleep? 1 mg melatonin", opt:true, d:"Same rule: only if you've been awake about 20 minutes, and never after 4am."},
+      {k:"dark", s:L("2026-09-26","07:00"), e:L("2026-09-26","08:00"), t:"Go easy on early light", d:"Only the first hour today."},
+      {k:"caf", s:L("2026-09-26","07:00"), e:L("2026-09-26","14:00"), t:"Coffee OK, last cup by 2pm", d:""},
+      {k:"light", s:L("2026-09-26","11:00"), e:L("2026-09-26","18:00"), t:"Get outside in daylight", d:""},
+      {k:"sleep", s:L("2026-09-26","23:00"), e:L("2026-09-27","07:00"), t:"Bedtime: normal London hours", d:""},
+      {k:"mel", s:L("2026-09-27","01:00"), e:L("2026-09-27","04:00"), t:"Awake and can't get back to sleep? 1 mg melatonin", opt:true, d:"Probably not needed by now."},
+      {k:"light", s:L("2026-09-27","07:00"), mark:true, t:"You should be on London time", d:"Back to normal: morning light is fine, and so is coffee before about 2pm. If you still wake early, keep getting evening light for another day or two."}
+    ]
+  };
 
-    {k:"flight",s:L("2026-09-24","09:40"), mark:true, t:"Land at Gatwick", d:"You're on London time from now on."},
-    {k:"caf",   s:L("2026-09-24","09:40"), e:L("2026-09-24","14:00"), t:"Coffee OK, last cup by 2pm", lane:1,
-      d:"Caffeine helps you get through today. None after 2pm or it'll affect tonight's sleep."},
-    {k:"light", s:L("2026-09-24","10:00"), e:L("2026-09-24","18:00"), t:"Get outside in daylight",
-      d:"The most important thing today. Walk, sit in a park, do errands outside. Aim for several hours in total."},
-    {k:"sleep", s:L("2026-09-24","13:00"), e:L("2026-09-24","13:20"), t:"Power nap", opt:true,
-      d:"Only if you're struggling. Set an alarm for 20 minutes."},
-    {k:"sleep", s:L("2026-09-24","22:00"), e:L("2026-09-25","07:00"), t:"Bedtime",
-      d:"Try to stay up until 10pm. Evening light is fine these first nights."},
-    {k:"mel",   s:L("2026-09-25","01:00"), e:L("2026-09-25","04:00"), t:"Awake and can't get back to sleep? 1 mg melatonin", opt:true,
-      d:"Only if you've been awake about 20 minutes. Don't take it after 4am."},
-
-    {k:"dark",  s:L("2026-09-25","07:00"), e:L("2026-09-25","09:00"), t:"Go easy on morning light",
-      d:"Sunglasses if you go out early. Indoor light is fine."},
-    {k:"caf",   s:L("2026-09-25","07:00"), e:L("2026-09-25","14:00"), t:"Coffee OK, last cup by 2pm", lane:1, d:""},
-    {k:"light", s:L("2026-09-25","12:00"), e:L("2026-09-25","19:00"), t:"Get outside in daylight",
-      d:"Afternoon and early-evening light is what helps most today."},
-    {k:"sleep", s:L("2026-09-25","22:30"), e:L("2026-09-26","07:00"), t:"Bedtime", d:""},
-    {k:"mel",   s:L("2026-09-26","01:00"), e:L("2026-09-26","04:00"), t:"Awake and can't get back to sleep? 1 mg melatonin", opt:true,
-      d:"Same rule: only if you've been awake about 20 minutes, and never after 4am."},
-
-    {k:"dark",  s:L("2026-09-26","07:00"), e:L("2026-09-26","08:00"), t:"Go easy on early light", d:"Only the first hour today."},
-    {k:"caf",   s:L("2026-09-26","07:00"), e:L("2026-09-26","14:00"), t:"Coffee OK, last cup by 2pm", lane:1, d:""},
-    {k:"light", s:L("2026-09-26","11:00"), e:L("2026-09-26","18:00"), t:"Get outside in daylight", d:""},
-    {k:"sleep", s:L("2026-09-26","23:00"), e:L("2026-09-27","07:00"), t:"Bedtime: normal London hours", d:""},
-    {k:"mel",   s:L("2026-09-27","01:00"), e:L("2026-09-27","04:00"), t:"Awake and can't get back to sleep? 1 mg melatonin", opt:true, d:"Probably not needed by now."},
-
-    {k:"light", s:L("2026-09-27","07:00"), mark:true, t:"You should be on London time",
-      d:"Back to normal: morning light is fine, and so is coffee before about 2pm. If you still wake early, keep getting evening light for another day or two."}
-  ];
-  E.forEach((x,i)=>{x.i=i; if(x.mark) x.e=x.s;});
-
-  const LEG = [
-    ["sleep","Sleep"],["plane","Sleep on the plane"],["light","Get bright light"],["dark","Avoid bright light"],
-    ["caf","Caffeine OK"],["nocaf","No caffeine"],["mel","Melatonin, only if needed"],["flight","Flight"]
-  ];
-  document.getElementById("lg").innerHTML = LEG.map(([k,t])=>`<div><span class="ic sm k-${k}">${iconFor(k)}</span>${t}</div>`).join("");
-
-  // ---------- time helpers (fixed offsets) ----------
-  const shift = (t,z)=> new Date(t + OFF[z]*3600e3); // read with getUTC*
-  const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  function hm(t,z){ const d=shift(t,z); let h=d.getUTCHours(), m=d.getUTCMinutes(); const ap=h<12?"am":"pm"; h=h%12||12; return h+(m?":"+String(m).padStart(2,"0"):"")+ap; }
-  function dayKey(t,z){ const d=shift(t,z); return Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()); }
-  function dayLabel(key){ const d=new Date(key); return `${DOW[d.getUTCDay()]}, ${MON[d.getUTCMonth()]} ${d.getUTCDate()}`; }
-  function range(x,z){
-    if(x.mark) return hm(x.s,z);
-    const a=hm(x.s,z), b=hm(x.e,z);
-    return dayKey(x.s,z)===dayKey(x.e,z) ? `${a} – ${b}` : `${a} – ${b} next day`;
+  // ---------- plan generator ----------
+  // Circadian approach: estimate where the body clock's low point (about 2h before natural wake) sits
+  // each night, then place light before/after it to push the clock the right way, shifting
+  // 1–1.5 h per day (a few days before departure, then at the destination).
+  function subtract(pieces, blocks){
+    let out = pieces.slice();
+    blocks.forEach(b => {
+      const next = [];
+      out.forEach(([a,z]) => {
+        if(b.e <= a || b.s >= z){ next.push([a,z]); return; }
+        if(b.s > a) next.push([a, b.s]);
+        if(b.e < z) next.push([b.e, z]);
+      });
+      out = next;
+    });
+    return out;
   }
-  function dur(ms){ const m=Math.round(ms/60000); if(m<60) return m+" min"; const h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
+  function merge(list){
+    list.sort((a,b) => a[0]-b[0]);
+    const out = [];
+    list.forEach(p => { const l = out[out.length-1]; if(l && p[0] <= l[1]) l[1] = Math.max(l[1], p[1]); else out.push(p.slice()); });
+    return out;
+  }
 
-  // ---------- zone ----------
-  const LANDED = L("2026-09-24","09:40");
-  let zone;
-  try{ zone = localStorage.getItem("ts-zone"); }catch(e){}
-  if(zone!=="kl" && zone!=="lon") zone = Date.now() < LANDED ? "kl" : "lon";
-  const other = z => z==="kl"?"lon":"kl";
+  function analyse(trip){
+    const legs = trip.legs.map(l => ({...l, s: atLocal(l.fromTz, l.dep), e: atLocal(l.toTz, l.arr)})).sort((a,b) => a.s-b.s);
+    const dep0 = legs[0].s, arr = legs[legs.length-1].e;
+    let delta = (offMin(trip.destTz, arr) - offMin(trip.homeTz, dep0)) / 60;
+    while(delta > 12) delta -= 24; while(delta <= -12) delta += 24;
+    // S > 0: body clock must move later (delay); S < 0: earlier (advance).
+    // Big eastward jumps (10h+) are easier to take as a delay the other way round.
+    const S = delta < 0 ? -delta : delta >= 10 ? 24 - delta : -delta;
+    const raw = (offMin(trip.destTz, arr) - offMin(trip.homeTz, dep0)) / 60;
+    return {legs, dep0, arr, delta, raw, S, sg: S >= 0 ? 1 : -1, mag: Math.abs(S)};
+  }
 
-  // ---------- render days ----------
-  const daysEl = document.getElementById("days");
+  function generate(trip){
+    const {legs, dep0, arr, S, sg, mag} = analyse(trip);
+    const Htz = trip.homeTz, Dtz = trip.destTz, dose = trip.dose || "1 mg";
+    const home = trip.homeCity || "home", dest = trip.destCity || "your destination";
+    const ev = [];
+    const pre = sg > 0 ? 1.5 : 1, post = sg > 0 ? 1.5 : 1;
+    const preN = mag >= 6 ? 2 : mag >= 3 ? 1 : 0;
+    const airportStart = dep0 - 2.5*HR;
+    const inLeg = t => legs.find(l => t >= l.s && t < l.e);
+    const cores = legs.filter(l => l.e - l.s >= HR).map(l => [l.s + 20*MIN, l.e - 20*MIN]);
+    const [bh] = trip.bed.split(":").map(Number);
+    const bedNext = bh < 12;          // usual bedtime is after midnight
+    const depDate = dstr(dep0, Htz);
+    const planStart = Math.min(at(Htz, addDays(depDate, -preN), trip.wake), dep0 - 6*HR);
+
+    // nights on the body clock's schedule, until arrival
+    const homeNights = [];
+    for(let k = -preN; k < 8; k++){
+      const d = addDays(depDate, k);
+      const c = sg * Math.min(mag, pre * (k + preN + 1));
+      const s = r15(at(Htz, bedNext ? addDays(d,1) : d, trip.bed) + c*HR);
+      const e = r15(at(Htz, addDays(d,1), trip.wake) + c*HR);
+      if(s >= arr) break;
+      homeNights.push({s, e, c, home: true});
+    }
+    // nights on local destination time
+    let prog = homeNights.length ? Math.abs(homeNights[homeNights.length-1].c) : 0;
+    prog = Math.min(mag, prog);
+    let d0 = dstr(arr, Dtz); if(sh(arr, Dtz).getUTCHours() < 5) d0 = addDays(d0, -1);
+    const destNights = [];
+    for(let j = 0; j < 9; j++){
+      const R = mag - prog;
+      if(j >= 2 && R <= 0) break;
+      const d = addDays(d0, j), flex = Math.min(R*0.5, 1.5);
+      let s = r15(at(Dtz, bedNext ? addDays(d,1) : d, trip.bed) + (sg > 0 ? -flex : flex)*HR);
+      const e = r15(at(Dtz, addDays(d,1), trip.wake) + (sg > 0 ? 0 : Math.min(R*0.5, 1))*HR);
+      if(s < arr + HR) s = r15(arr + 45*MIN);
+      if(e - s >= 2*HR) destNights.push({s, e, c: sg*prog, R, j});
+      prog = Math.min(mag, prog + post);
+    }
+    const lastNight = destNights[destNights.length-1];
+    const planEnd = (lastNight ? lastNight.e : arr) + 14*HR;
+
+    // sleep blocks
+    const blocks = [];
+    homeNights.forEach(n => {
+      let pieces = [];
+      if(n.s < airportStart) pieces.push([n.s, Math.min(n.e, airportStart)]);
+      cores.forEach(([x,y]) => { const a = Math.max(n.s, x), b = Math.min(n.e, y); if(b > a) pieces.push([a,b]); });
+      pieces.filter(p => p[1]-p[0] >= 45*MIN).forEach(([a,b]) => {
+        const leg = inLeg(a + MIN);
+        const full = b - a >= (n.e - n.s) - 10*MIN;
+        let d;
+        if(leg) d = "Eye mask and earplugs. If you can't sleep, rest with your eyes closed." + (sg > 0 ? " No melatonin now." : "");
+        else if(n.c) d = `That's ${hrs(Math.abs(n.c))} ${n.c > 0 ? "later" : "earlier"} than your usual ${hmStr(trip.bed)}. ` +
+          (n.c > 0 ? "Stay up with the lights on until then, and sleep in (no early alarm)." : "Dim the lights an hour before, and get up with your alarm.");
+        else d = "Your normal night's sleep.";
+        if(!leg && !full && b === airportStart) d += " A short night: you need to leave for the airport.";
+        blocks.push({k: leg ? "plane" : "sleep", s: a, e: b, t: leg ? `Sleep on the plane (${leg.flight || leg.from + "–" + leg.to})` : (n.c ? "Shifted bedtime" : "Sleep"), d});
+      });
+    });
+    destNights.forEach((n, i) => {
+      let d = i === 0
+        ? `Your first night in ${dest}. ` + (sg > 0 ? "Try to stay up until then; evening light helps." : "If you can't fall asleep, rest in the dark rather than picking up your phone.")
+        : n.R > 0 ? "Keep to this time even if you're not sleepy." : `Normal ${dest} hours from here on.`;
+      blocks.push({k:"sleep", s:n.s, e:n.e, t:"Bedtime", d});
+    });
+    blocks.forEach(b => ev.push(b));
+    const sleepSorted = blocks.slice().sort((a,b) => a.s - b.s);
+    const awake = subtract([[planStart, planEnd]], sleepSorted);
+
+    // light
+    if(mag >= 2){
+      const seek = [], avoid = [];
+      [...homeNights, ...destNights.filter(n => n.R > 0)].forEach(n => {
+        const mid = (n.s + n.e)/2 + 2*HR;
+        let T = at(Htz, dstr(n.e, Htz), trip.wake) + n.c*HR - 2*HR;
+        while(T - mid > 12*HR) T -= 24*HR; while(mid - T > 12*HR) T += 24*HR;
+        if(sg > 0){ seek.push([T - 9*HR, T - HR]); avoid.push([T, T + 5*HR]); }
+        else { avoid.push([T - 5*HR, T]); seek.push([T + 0.5*HR, T + 7*HR]); }
+      });
+      const clip = list => merge(list).flatMap(p => subtract([p], sleepSorted))
+        .map(([a,b]) => [r15(Math.max(a, planStart)), r15(Math.min(b, planEnd))]).filter(([a,b]) => b - a >= 30*MIN);
+      clip(seek).forEach(([a,b]) => {
+        const leg = inLeg(a + MIN), port = !leg && a >= airportStart && a < arr;
+        ev.push({k:"light", s:a, e:b,
+          t: leg ? "Keep your light on" : port ? "Stay in bright light" : a >= arr ? "Get outside in daylight" : "Get bright light",
+          d: leg ? "Reading light on, screen brightness up, walk the aisle. Stay awake if you can." :
+             port ? "Sit in the brightest part of the terminal, not a dim lounge corner." :
+             "Go outside if it's daytime (even cloudy daylight beats indoor light). After dark, keep the room brightly lit."});
+      });
+      clip(avoid).forEach(([a,b]) => {
+        const leg = inLeg(a + MIN);
+        ev.push({k:"dark", s:a, e:b,
+          t: leg ? "Keep it dim" : "Avoid bright light",
+          d: leg ? "Window shade down, eye mask on if you're resting, screens dimmed." : "Sunglasses outside and stay away from sunny windows. Normal indoor light is fine."});
+      });
+    }
+
+    // caffeine: fine from waking until ~7h before the next main sleep
+    const mains = sleepSorted.filter(b => b.e - b.s >= 3*HR);
+    const cafSpans = [];
+    mains.forEach((b, i) => { const from = i === 0 ? planStart : mains[i-1].e; cafSpans.push([from, b.s - 7*HR, b.s]); });
+    if(mains.length) cafSpans.push([mains[mains.length-1].e, mains[mains.length-1].e + 7*HR, null]);
+    cafSpans.forEach(([a, b, bed]) => {
+      subtract([[a, b]], sleepSorted).filter(([x,y]) => y - x >= HR).forEach(([x,y]) => {
+        const tz = x >= arr ? Dtz : Htz;
+        ev.push({k:"caf", s:r15(x), e:r15(y), t:`Coffee / tea OK until ${hm(r15(y), tz)}`, d: bed ? "No caffeine after that, so it doesn't spoil the next sleep." : ""});
+      });
+    });
+
+    // naps
+    legs.filter(l => l.e - l.s >= 5*HR && !blocks.some(b => b.e > l.s && b.s < l.e)).forEach(l => {
+      const m = r15((l.s + l.e)/2);
+      ev.push({k:"plane", s:m - 30*MIN, e:m + 30*MIN, opt:true, t:"Nap if you're sleepy", d:"Keep it under an hour or so, then back to the plan."});
+    });
+    const aH = sh(arr, Dtz).getUTCHours();
+    if(mag >= 3 && aH >= 5 && aH < 12){
+      const n = at(Dtz, dstr(arr, Dtz), "13:30");
+      ev.push({k:"sleep", s:n, e:n + 20*MIN, opt:true, t:"Power nap", d:"Only if you're struggling. Set an alarm for 20 minutes."});
+    }
+
+    // melatonin
+    if(trip.mel && mag >= 3){
+      if(sg < 0){
+        [...homeNights.filter(n => n.c), ...destNights.filter(n => n.R > 0)].forEach(n => {
+          const blk = blocks.find(b => b.s <= n.s + MIN && b.e > n.s) || blocks.find(b => b.s >= n.s && b.s < n.e);
+          if(!blk) return;
+          ev.push({k:"mel", s:blk.s - 30*MIN, e:blk.s, t:`Take ${dose} melatonin`, d:"About 30 minutes before this sleep. It helps move your body clock earlier."});
+        });
+      } else {
+        destNights.filter(n => n.R > 0 || n.j < 2).forEach(n => {
+          const a = r15(n.s + 2*HR), b = r15(n.e - 3*HR);
+          if(b - a >= HR) ev.push({k:"mel", s:a, e:b, opt:true, t:`Awake and can't get back to sleep? ${dose} melatonin`, d:`Only if you've been awake about 20 minutes. Don't take it after ${hm(b, Dtz)}.`});
+        });
+      }
+    }
+
+    // flights and milestones
+    ev.push({k:"flight", s:r15(airportStart), mark:true, t:`Be at the airport (${legs[0].from})`, d:"About 2½ hours before departure. Check your airline's check-in cut-off."});
+    legs.forEach(l => ev.push({k:"flight", s:l.s, e:l.e, t:`${l.flight ? l.flight + " · " : ""}${l.from} → ${l.to}`,
+      d: `${dur(l.e - l.s)}.` + (l === legs[legs.length-1] ? ` Set your watch to ${dest} time when you board.` : "")}));
+    ev.push({k:"flight", s:arr, mark:true, t:`Land in ${dest}`, d:`You're on ${dest} time from now on. Eat meals at local times.`});
+    if(lastNight) ev.push({k:"light", s:lastNight.e, mark:true, t:`You should be on ${dest} time`,
+      d: "Back to normal life. If you still wake at odd hours, keep following the light advice for another day or two."});
+    return ev.filter(x => (x.mark || x.e > x.s)).sort((a,b) => a.s - b.s);
+  }
+
+  // ---------- storage: your private space in Claude, or this browser ----------
+  const LS_TRIPS = "ts-trips", LS_LAST = "ts-last";
+  const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+  const lsSet = (k,v) => { try{ localStorage.setItem(k, v); }catch(e){} };
+  let trips = [];
+  try{ trips = JSON.parse(lsGet(LS_TRIPS) || "[]"); if(!Array.isArray(trips)) trips = []; }catch(e){ trips = []; }
+  let cloud = null;   // doc ref in the viewer's private subtree
+  async function persist(){
+    lsSet(LS_TRIPS, JSON.stringify(trips));
+    if(cloud){ try{ await cloud.set({list: trips}); }catch(e){} }
+  }
+  async function connectCloud(){
+    if(!window.claude || !window.claude.use) return;
+    try{
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      const uid = user && await user.id();
+      if(!db || !uid) return;
+      const ref = db.doc("data/users/" + uid + "/trips");
+      const snap = await ref.get();
+      cloud = ref;
+      const remote = snap.exists && Array.isArray((snap.data() || {}).list) ? snap.data().list : [];
+      const ids = new Set(remote.map(t => t.id));
+      const merged = remote.concat(trips.filter(t => !ids.has(t.id)));
+      const changed = merged.length !== remote.length;
+      trips = merged;
+      if(changed) await persist(); else lsSet(LS_TRIPS, JSON.stringify(trips));
+      const last = lsGet(LS_LAST);
+      if(last && current && current.id !== last && trips.some(t => t.id === last)) openTrip(last); else fillSelect();
+    }catch(e){ cloud = null; }
+  }
+
+  // ---------- state ----------
+  let current = null, events = [], zones = null, zone = "a";
+  const allTrips = () => [...trips.slice().sort((a,b) => (b.created||0) - (a.created||0)), PRESET];
+
+  function fillSelect(){
+    const sel = $("#trip-select");
+    sel.innerHTML = allTrips().map(t => `<option value="${esc(t.id)}">${esc(t.title)}</option>`).join("");
+    if(current) sel.value = current.id;
+  }
+
+  function openTrip(id){
+    const t = allTrips().find(x => x.id === id) || allTrips()[0];
+    current = t; lsSet(LS_LAST, t.id);
+    try{ events = t.preset ? t.events() : generate(t); }catch(e){ events = []; }
+    events.forEach(x => { if(x.mark) x.e = x.s; });
+    zones = {a: {tz: t.homeTz, name: t.homeCity}, b: {tz: t.destTz, name: t.destCity}};
+    const arr = analyse(t).arr;
+    zone = Date.now() < arr ? "a" : "b";
+    fillSelect();
+    renderHeader(t);
+    renderDays();
+    renderNotes(t);
+  }
+
+  function renderHeader(t){
+    const {raw, S, mag} = analyse(t);
+    $("#route").innerHTML = `${esc(t.homeCity)} <span>→</span> ${esc(t.destCity)}`;
+    const flights = t.legs.map(l => l.flight || (l.from + "–" + l.to)).join(" · ");
+    const via = t.legs.slice(0,-1).map(l => l.toCity || l.to).filter(Boolean);
+    const diff = Math.abs(raw) < 0.25 ? `same time as ${esc(t.homeCity)}` :
+      `${esc(t.destCity)} is ${hrs(Math.abs(raw))} ${raw > 0 ? "ahead of" : "behind"} ${esc(t.homeCity)}`;
+    const strat = mag < 2 ? "Small time difference, so only light tweaks are needed." :
+      `Plan: move your body clock ${hrs(mag)} ${S > 0 ? "later" : "earlier"}` +
+      (Math.abs(Math.abs(raw) - mag) > 0.25 ? ` (quicker than ${hrs(24 - mag)} ${S > 0 ? "earlier" : "later"}).` : ".");
+    $("#route-sub").innerHTML = `${esc(flights)}${via.length ? " via " + esc(via.join(", ")) : ""} · ${diff}. ${strat}`;
+    $("#trip-actions").innerHTML = t.preset ? "" :
+      `<button class="btn link" type="button" id="edit-trip">Edit flights</button><button class="btn link" type="button" id="del-trip">Delete trip</button><span id="del-confirm"></span>`;
+    if(!t.preset){
+      $("#edit-trip").onclick = () => openEditor(t);
+      $("#del-trip").onclick = () => {
+        $("#del-confirm").innerHTML = `<span class="confirm">Delete this trip? <button class="btn danger" type="button" id="del-yes">Delete</button><button class="btn link" type="button" id="del-no">Keep</button></span>`;
+        $("#del-yes").onclick = async () => { trips = trips.filter(x => x.id !== t.id); await persist(); openTrip(allTrips()[0].id); };
+        $("#del-no").onclick = () => { $("#del-confirm").innerHTML = ""; };
+      };
+    }
+    $("#z-a").textContent = t.homeCity + " time";
+    $("#z-b").textContent = t.destCity + " time";
+  }
+
+  function renderNotes(t){
+    const {S, mag} = analyse(t);
+    const west = S >= 0, dose = esc(t.dose || "1 mg");
+    const mel = !t.mel ? "" : west ? `
+      <div><h3>Melatonin (your ${dose}): only if you wake in the night</h3><ul>
+        <li><b>Don't</b> take it before your flights or to sleep on the plane. When your clock needs to move later, melatonin in the evening pulls it the wrong way.</li>
+        <li><b>Do</b> take it at your destination if you wake in the middle of the night and can't get back to sleep within about 20 minutes. The plan shows the window each night.</li>
+        <li>Use fast-release, not slow-release. Low doses work well for jet lag.</li></ul></div>` : `
+      <div><h3>Melatonin (your ${dose}): about 30 minutes before the shifted bedtimes</h3><ul>
+        <li>Taken before bed, melatonin helps move your body clock earlier and helps you fall asleep before you feel tired.</li>
+        <li>Only take it at the times shown. At other times it can shift your clock the wrong way.</li>
+        <li>Use fast-release, not slow-release. Low doses work well for jet lag.</li></ul></div>`;
+    $("#notes").innerHTML = `
+      <h2>Why it's set up this way</h2>
+      <div><h3>${mag < 2 ? "Only a small shift is needed" : west ? "Your body clock has to move later" : "Your body clock has to move earlier"}</h3>
+        <p>${mag < 2 ? "With a difference this small you'll adjust within a day or so. Just follow local meal and sleep times." :
+          west ? "Staying up later and sleeping in comes more easily to the body than the reverse. The plan starts nudging your sleep later before you fly, then continues at your destination." :
+          "Moving earlier is the harder direction. The plan starts nudging your sleep earlier before you fly, and uses morning light at the right time to pull your clock forward."}</p></div>
+      <div><h3>Light matters most</h3>
+        <p>Daylight at the right time moves your clock faster than anything else. At the wrong time it pushes you back the other way. In "avoid light" blocks use sunglasses. In "get light" blocks go outside if you can.</p></div>
+      ${mel}
+      <div><h3>Small things that help</h3><ul>
+        <li>Drink water on the flights and keep alcohol to a minimum; it breaks up your sleep.</li>
+        <li>Pack an eye mask and earplugs.</li>
+        <li>Once you land, eat meals at local times.</li>
+        <li>Short naps (under 20 minutes) are fine. Long naps make the night harder.</li></ul></div>`;
+    $("#fine").textContent = t.preset
+      ? "This trip follows your Timeshifter plan for the day of travel and the flights. The days after landing use the same approach. General guidance, not medical advice. If you take other medication, check with a pharmacist before using melatonin."
+      : "Plan generated from your flights and usual sleep times, using the same light-timing approach as jet lag apps like Timeshifter. It estimates where your body clock is each day, so treat the times as a guide, not to the minute. General guidance, not medical advice. If you take other medication, check with a pharmacist before using melatonin.";
+  }
+
+  // ---------- plan view ----------
+  function range(x, tz){
+    if(x.mark) return hm(x.s, tz);
+    const a = hm(x.s, tz), b = hm(x.e, tz);
+    return dstr(x.s, tz) === dstr(x.e, tz) ? `${a} – ${b}` : `${a} – ${b} next day`;
+  }
   function renderDays(){
-    const z=zone, o=other(z);
-    const groups=new Map();
-    [...E].sort((a,b)=>a.s-b.s).forEach(x=>{const k=dayKey(x.s,z); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(x);});
-    let html="";
-    for(const [key,list] of groups){
-      const start=key - OFF[z]*3600e3, end=start+864e5;
-      const lanes=[["Sleep",["sleep","plane"]],["Light",["light","dark"]],["Coffee",["caf","nocaf"]],["Other",["flight","mel"]]];
-      const strip = lanes.map(([name,ks])=>{
-        const segs=E.filter(x=>!x.mark && ks.includes(x.k) && x.e>start && x.s<end).map(x=>{
-          const a=Math.max(x.s,start), b=Math.min(x.e,end);
-          return `<div class="seg-b k-${x.k}" style="left:${(a-start)/864e5*100}%;width:${Math.max((b-a)/864e5*100,.8)}%" title="${x.t}"></div>`;
+    const Z = zones[zone], O = zones[zone === "a" ? "b" : "a"];
+    const arr = analyse(current).arr, dep0 = analyse(current).dep0;
+    const groups = new Map();
+    events.forEach(x => { const k = dstr(x.s, Z.tz); if(!groups.has(k)) groups.set(k, []); groups.get(k).push(x); });
+    let html = "";
+    for(const [d, list] of groups){
+      const start = at(Z.tz, d, "00:00"), end = at(Z.tz, addDays(d,1), "00:00"), span = end - start;
+      const lanes = [["Sleep",["sleep","plane"]],["Light",["light","dark"]],["Coffee",["caf","nocaf"]],["Other",["flight","mel"]]];
+      const strip = lanes.map(([name, ks]) => {
+        const segs = events.filter(x => !x.mark && ks.includes(x.k) && x.e > start && x.s < end).map(x => {
+          const a = Math.max(x.s, start), b = Math.min(x.e, end);
+          return `<div class="seg-b k-${x.k}" style="left:${(a-start)/span*100}%;width:${Math.max((b-a)/span*100, .8)}%" title="${esc(x.t)}"></div>`;
         }).join("");
-        return `<div class="lane"><b>${name}</b><div class="track" data-start="${start}">${segs}</div></div>`;
+        return `<div class="lane"><b>${name}</b><div class="track" data-start="${start}" data-end="${end}">${segs}</div></div>`;
       }).join("");
-      const ticks=`<div class="ticks"><i></i><div>${[0,6,12,18,24].map(h=>`<span style="left:${h/24*100}%">${h===0||h===24?"12a":h===12?"12p":(h%12)+(h<12?"a":"p")}</span>`).join("")}</div></div>`;
-      const items=list.map(x=>`
-        <div class="item k-${x.k}" data-s="${x.s}" data-e="${x.e}" data-mark="${x.mark?1:0}">
+      const ticks = `<div class="ticks"><i></i><div>${[0,6,12,18,24].map(h => `<span style="left:${h/24*100}%">${h%24 === 0 ? "12a" : h === 12 ? "12p" : (h%12) + (h < 12 ? "a" : "p")}</span>`).join("")}</div></div>`;
+      const items = list.map(x => `
+        <div class="item k-${x.k}" data-s="${x.s}" data-e="${x.e}" data-mark="${x.mark ? 1 : 0}">
           <span class="ic">${iconFor(x.k)}</span>
           <div class="main">
-            <div class="time mono">${range(x,z)}<span class="pill" hidden>Now</span></div>
-            <h3>${x.t}${x.opt?'<span class="opt">If needed</span>':""}</h3>
-            ${x.d?`<p>${x.d}</p>`:""}
-            <div class="alt mono">${ZN[o]}: ${range(x,o)}</div>
+            <div class="time mono">${range(x, Z.tz)}<span class="pill" hidden>Now</span></div>
+            <h3>${esc(x.t)}${x.opt ? '<span class="opt">If needed</span>' : ""}</h3>
+            ${x.d ? `<p>${esc(x.d)}</p>` : ""}
+            <div class="alt mono">${esc(O.name)}: ${range(x, O.tz)}</div>
           </div>
         </div>`).join("");
-      const where = end<=LANDED ? "Before you land" : start>=LANDED ? "In London" : "Travel day";
-      html+=`<section class="day" data-start="${start}" data-end="${end}">
-        <div class="dayhead"><h2>${dayLabel(key)}</h2><span class="tag">${where} · ${ZN[z]} time</span></div>
-        <div class="strip">${strip}${ticks}</div>
-        <div class="items">${items}</div></section>`;
+      const where = end <= dep0 - 3*HR ? "Before you fly" : start >= arr ? "At your destination" : "Travel day";
+      html += `<section class="day"><div class="dayhead"><h2>${dayLabel(d)}</h2><span class="tag">${where} · ${esc(Z.name)} time</span></div>
+        <div class="strip">${strip}${ticks}</div><div class="items">${items}</div></section>`;
     }
-    daysEl.innerHTML=html;
-    document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.z===z));
+    $("#days").innerHTML = html || `<p class="status">No plan could be made from these flights. Check the dates and times.</p>`;
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.z === zone));
     tick();
   }
 
-  // ---------- live state ----------
-  const TITLE_NOW = {
-    sleep:"Sleep", plane:"Sleep on the plane", light:"Get bright light", dark:"Avoid bright light",
-    caf:"Caffeine OK", nocaf:"No caffeine", mel:"Melatonin OK if you're awake", flight:"Flying"
-  };
+  const PRI = {sleep:0, plane:0, flight:1, light:2, dark:2, nocaf:3, caf:3, mel:4};
   function tick(){
-    const now=Date.now(), z=zone;
-    const sd=shift(now,z);
-    document.getElementById("clock").textContent = `${dayLabel(dayKey(now,z))} · ${hm(now,z)} ${ZN[z]} · ${hm(now,other(z))} ${ZN[other(z)]}`;
-
-    const active=E.filter(x=>!x.mark && x.s<=now && now<x.e).sort((a,b)=>{
-      const p={sleep:0,plane:0,flight:1,light:2,dark:2,nocaf:3,caf:3,mel:4}; return p[a.k]-p[b.k];});
-    const doing=document.getElementById("doing");
-    if(now < E[0].s){
-      doing.innerHTML = `<div class="do"><span class="ic k-sleep">${iconFor("sleep")}</span><div><div class="t">Get ready to sleep in</div><div class="d">Your plan starts at ${hm(E[0].s,z)}: sleep until 1pm KL.</div></div></div>`;
-    } else if(!active.length){
-      const last=E[E.length-1];
-      doing.innerHTML = now>=last.s
-        ? `<div class="do"><span class="ic k-light">${iconFor("light")}</span><div><div class="t">You're on London time</div><div class="d">${last.d}</div></div></div>`
+    if(!current) return;
+    const now = Date.now(), Z = zones[zone], O = zones[zone === "a" ? "b" : "a"];
+    $("#clock").textContent = `${dayLabel(dstr(now, Z.tz))} · ${hm(now, Z.tz)} ${Z.name} · ${hm(now, O.tz)} ${O.name}`;
+    const active = events.filter(x => !x.mark && x.s <= now && now < x.e).sort((a,b) => PRI[a.k] - PRI[b.k]);
+    const first = events[0], last = events[events.length-1];
+    const doing = $("#doing");
+    if(!events.length) doing.innerHTML = "";
+    else if(now < first.s) doing.innerHTML = `<div class="do"><span class="ic k-flight">${iconFor("flight")}</span><div><div class="t">Your plan starts ${dur(first.s - now) === "0 min" ? "now" : "in " + dur(first.s - now)}</div><div class="d">First step: ${esc(first.t)} at ${hm(first.s, Z.tz)}. Live normally until then.</div></div></div>`;
+    else if(!active.length){
+      doing.innerHTML = now >= last.s
+        ? `<div class="do"><span class="ic k-light">${iconFor("light")}</span><div><div class="t">${esc(last.t)}</div><div class="d">${esc(last.d)}</div></div></div>`
         : `<div class="do"><span class="ic k-flight">${iconFor("flight")}</span><div><div class="t">Nothing to do right now</div><div class="d">Go about your day as normal. The next step is below.</div></div></div>`;
     } else {
-      doing.innerHTML = active.map(x=>`<div class="do k-${x.k}"><span class="ic">${iconFor(x.k)}</span><div>
-        <div class="t">${x.k==="flight"?x.t:x.t}</div>
-        ${x.d?`<div class="d">${x.d}</div>`:""}
-        <div class="until mono">until ${hm(x.e,z)} · ${dur(x.e-now)} left</div></div></div>`).join("");
+      doing.innerHTML = active.map(x => `<div class="do k-${x.k}"><span class="ic">${iconFor(x.k)}</span><div>
+        <div class="t">${esc(x.t)}</div>${x.d ? `<div class="d">${esc(x.d)}</div>` : ""}
+        <div class="until mono">until ${hm(x.e, Z.tz)} · ${dur(x.e - now)} left</div></div></div>`).join("");
     }
-    const upcoming=E.filter(x=>x.s>now).sort((a,b)=>a.s-b.s).slice(0,3);
-    document.getElementById("next").innerHTML = upcoming.length
-      ? `<span class="eyebrow" style="color:var(--muted)">Coming up</span>` + upcoming.map(x=>`<div class="row"><span class="ic sm k-${x.k}">${iconFor(x.k)}</span><span>${x.t}</span><span class="in mono">${hm(x.s,z)} · in ${dur(x.s-now)}</span></div>`).join("")
+    const upcoming = events.filter(x => x.s > now).slice(0,3);
+    $("#next").innerHTML = upcoming.length
+      ? `<span class="eyebrow" style="color:var(--muted)">Coming up</span>` + upcoming.map(x => `<div class="row"><span class="ic sm k-${x.k}">${iconFor(x.k)}</span><span>${esc(x.t)}</span><span class="in mono">${hm(x.s, Z.tz)} · in ${dur(x.s - now)}</span></div>`).join("")
       : "";
-
-    document.querySelectorAll(".item").forEach(el=>{
-      const s=+el.dataset.s, e=+el.dataset.e, mark=el.dataset.mark==="1";
-      const live = !mark && s<=now && now<e;
+    $("#next").hidden = !upcoming.length;
+    document.querySelectorAll(".item").forEach(el => {
+      const s = +el.dataset.s, e = +el.dataset.e, mark = el.dataset.mark === "1";
+      const live = !mark && s <= now && now < e;
       el.classList.toggle("live", live);
-      el.classList.toggle("past", mark ? now>s+30*60e3 : now>=e);
+      el.classList.toggle("past", mark ? now > s + 30*MIN : now >= e);
       el.querySelector(".pill").hidden = !live;
     });
-    document.querySelectorAll(".track").forEach(tr=>{
-      const st=+tr.dataset.start; let nl=tr.querySelector(".nowline");
-      if(now>=st && now<st+864e5){ if(!nl){nl=document.createElement("div");nl.className="nowline";tr.appendChild(nl);} nl.style.left=((now-st)/864e5*100)+"%"; }
+    document.querySelectorAll(".track").forEach(tr => {
+      const st = +tr.dataset.start, en = +tr.dataset.end; let nl = tr.querySelector(".nowline");
+      if(now >= st && now < en){ if(!nl){ nl = document.createElement("div"); nl.className = "nowline"; tr.appendChild(nl); } nl.style.left = ((now-st)/(en-st)*100) + "%"; }
       else if(nl) nl.remove();
     });
   }
 
-  function jumpNow(){
-    const el=document.querySelector(".item.live") || [...document.querySelectorAll(".item")].find(x=>!x.classList.contains("past"));
-    if(el) el.scrollIntoView({block:"center"});
+  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => { zone = b.dataset.z; renderDays(); }));
+  $("#jump").addEventListener("click", () => {
+    const el = document.querySelector(".item.live") || [...document.querySelectorAll(".item")].find(x => !x.classList.contains("past"));
+    if(el) el.scrollIntoView({block: "center"});
+  });
+  $("#trip-select").addEventListener("change", e => openTrip(e.target.value));
+
+  // ---------- trip editor ----------
+  try{ $("#tz-list").innerHTML = (Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : []).map(z => `<option value="${z}">`).join(""); }catch(e){}
+  let editing = null, shots = [];
+  const blankLeg = () => ({flight:"", from:"", fromCity:"", fromTz:"", dep:"", to:"", toCity:"", toTz:"", arr:""});
+  const FIELDS = [
+    ["flight","Flight","text","SQ 127"], ["from","From (airport)","text","KUL"], ["fromCity","From city","text","Kuala Lumpur"],
+    ["fromTz","From time zone","tz","Asia/Kuala_Lumpur"], ["dep","Departs (local)","datetime-local",""],
+    ["to","To (airport)","text","SIN"], ["toCity","To city","text","Singapore"], ["toTz","To time zone","tz","Asia/Singapore"],
+    ["arr","Arrives (local)","datetime-local",""]
+  ];
+  function renderLegs(legs){
+    $("#legs").innerHTML = legs.map((l, i) => `
+      <div class="leg" data-i="${i}">
+        <div class="leghead"><b>Flight ${i+1}</b>${legs.length > 1 ? `<button class="btn link" type="button" data-rm="${i}">Remove</button>` : ""}</div>
+        <div class="grid">${FIELDS.map(([k, lab, type, ph]) => `
+          <div class="f"><label for="leg${i}-${k}">${lab}</label>
+            <input id="leg${i}-${k}" data-k="${k}" type="${type === "tz" ? "text" : type}" ${type === "tz" ? 'list="tz-list" autocapitalize="off" autocomplete="off" spellcheck="false"' : ""} placeholder="${ph}" value="${esc(l[k])}"></div>`).join("")}
+        </div>
+      </div>`).join("");
+    document.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { const L = readLegs(); L.splice(+b.dataset.rm, 1); renderLegs(L); });
   }
-  document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{
-    zone=b.dataset.z; try{localStorage.setItem("ts-zone",zone);}catch(e){} renderDays();
-  }));
-  document.getElementById("jump").addEventListener("click",jumpNow);
-  renderDays();
-  setInterval(tick,30000);
+  function readLegs(){
+    return [...document.querySelectorAll("#legs .leg")].map(el => {
+      const l = {}; el.querySelectorAll("input").forEach(inp => l[inp.dataset.k] = inp.value.trim()); return l;
+    });
+  }
+  function openEditor(trip){
+    editing = trip || null;
+    $("#editor-title").textContent = trip ? "Edit trip" : "New trip";
+    renderLegs(trip ? trip.legs.map(l => ({...l})) : [blankLeg()]);
+    $("#f-bed").value = trip ? trip.bed : ($("#f-bed").value || "23:00");
+    $("#f-wake").value = trip ? trip.wake : ($("#f-wake").value || "07:00");
+    $("#f-mel").checked = trip ? !!trip.mel : true;
+    $("#f-dose").value = trip ? (trip.dose || "1 mg") : "1 mg";
+    shots = []; $("#thumbs").innerHTML = ""; $("#read-shots").disabled = true;
+    $("#shot-status").textContent = ""; $("#shot-status").classList.remove("err");
+    $("#form-error").hidden = true;
+    $("#editor").hidden = false; $("#plan-view").hidden = true;
+    $("#editor").scrollIntoView({block: "start"});
+  }
+  function closeEditor(){ $("#editor").hidden = true; $("#plan-view").hidden = false; }
+  $("#new-trip").addEventListener("click", () => openEditor(null));
+  $("#cancel-edit").addEventListener("click", closeEditor);
+  $("#add-leg").addEventListener("click", () => {
+    const L = readLegs(), prev = L[L.length-1];
+    const n = blankLeg(); if(prev){ n.from = prev.to; n.fromCity = prev.toCity; n.fromTz = prev.toTz; }
+    L.push(n); renderLegs(L);
+  });
+
+  $("#make-plan").addEventListener("click", async () => {
+    const legs = readLegs(), err = $("#form-error");
+    const fail = m => { err.textContent = m; err.hidden = false; };
+    for(const [i, l] of legs.entries()){
+      if(!l.from || !l.to) return fail(`Flight ${i+1}: add the airports it flies from and to.`);
+      if(!validTz(l.fromTz) || !validTz(l.toTz)) return fail(`Flight ${i+1}: pick time zones from the list (for example Asia/Singapore or Europe/London).`);
+      if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(l.dep) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(l.arr)) return fail(`Flight ${i+1}: add the departure and arrival date and time.`);
+      l.dep = l.dep.slice(0,16); l.arr = l.arr.slice(0,16);
+      if(atLocal(l.toTz, l.arr) <= atLocal(l.fromTz, l.dep)) return fail(`Flight ${i+1} arrives before it departs. Check the dates, and that each time is local to its airport.`);
+      l.fromCity = l.fromCity || l.from; l.toCity = l.toCity || l.to;
+    }
+    const bed = $("#f-bed").value, wake = $("#f-wake").value;
+    if(!bed || !wake) return fail("Add your usual bedtime and wake-up time.");
+    legs.sort((a,b) => atLocal(a.fromTz, a.dep) - atLocal(b.fromTz, b.dep));
+    const a = legs[0], z = legs[legs.length-1];
+    const d = new Date(atLocal(a.fromTz, a.dep));
+    const trip = {
+      id: editing ? editing.id : "t" + Date.now().toString(36),
+      created: editing ? editing.created : Date.now(),
+      title: `${a.fromCity} → ${z.toCity} · ${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`,
+      homeCity: a.fromCity, homeTz: a.fromTz, destCity: z.toCity, destTz: z.toTz,
+      legs, bed, wake, mel: $("#f-mel").checked, dose: $("#f-dose").value.trim() || "1 mg"
+    };
+    trips = trips.filter(t => t.id !== trip.id).concat(trip);
+    await persist();
+    closeEditor();
+    openTrip(trip.id);
+    window.scrollTo(0, 0);
+  });
+
+  // screenshots -> Claude reads the flights
+  let sample = null, imgOK = false, readCtl = null;
+  (async () => {
+    if(!window.claude || !window.claude.use) return offerManual();
+    sample = await claude.use("sample");
+    const lim = sample && await sample.limits().catch(() => null);
+    imgOK = !!(lim && lim.images);
+    if(!imgOK) return offerManual();
+    $("#shot-input").accept = lim.images.mediaTypes.join(",");
+    window.__maxShots = lim.images.maxCount;
+  })();
+  function offerManual(){
+    $("#shot-step").hidden = true;
+    $("#legs-title").textContent = "Your flights";
+    $("#sleep-title").textContent = "Your usual sleep at home";
+  }
+  function addShots(files){
+    const max = window.__maxShots || 4;
+    shots = shots.concat([...files].filter(f => /^image\//.test(f.type))).slice(0, max);
+    $("#thumbs").innerHTML = "";
+    shots.forEach(f => { const img = document.createElement("img"); img.alt = "Booking screenshot"; img.src = URL.createObjectURL(f); $("#thumbs").appendChild(img); });
+    $("#read-shots").disabled = !shots.length;
+    $("#shot-status").textContent = shots.length ? `${shots.length} screenshot${shots.length > 1 ? "s" : ""} ready.` : "";
+  }
+  $("#shot-input").addEventListener("change", e => { addShots(e.target.files); e.target.value = ""; });
+  const drop = $("#drop");
+  ["dragenter","dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => addShots(e.dataTransfer.files));
+
+  $("#stop-read").addEventListener("click", () => readCtl && readCtl.abort());
+  $("#read-shots").addEventListener("click", async () => {
+    if(!sample || !shots.length) return;
+    const st = $("#shot-status"); st.classList.remove("err");
+    st.textContent = "Reading your flights… this can take up to a minute.";
+    $("#read-shots").disabled = true; $("#stop-read").hidden = false;
+    readCtl = new AbortController();
+    const today = nowDate();
+    const prompt = `The attached images are screenshots of a flight booking (an airline email, app screen or boarding pass).
+Extract every flight leg of the FIRST journey (the outbound trip) in travel order. If there is also a return journey, leave it out and mention it in "note".
+Reply with only JSON, no other text, in exactly this shape:
+{"legs":[{"flight":"SQ 127","from":"KUL","fromCity":"Kuala Lumpur","fromTz":"Asia/Kuala_Lumpur","dep":"2026-09-23T22:00","to":"SIN","toCity":"Singapore","toTz":"Asia/Singapore","arr":"2026-09-23T23:20"}],"note":""}
+Rules:
+- "dep" and "arr" are the LOCAL times at that airport, exactly as printed, in 24-hour "YYYY-MM-DDTHH:MM" form.
+- "fromTz" and "toTz" are the IANA time zone names for the airports (e.g. "Europe/London", "America/New_York").
+- Use the 3-letter IATA airport codes and the city names.
+- If a year is missing, use the next occurrence on or after ${today}.
+- If an arrival is marked "+1" or on the next day, use the next day's date.
+- If you can't find any flights, reply {"legs":[],"note":"<what you saw instead>"}.`;
+    try{
+      const out = await sample.json(prompt, {images: shots, signal: readCtl.signal});
+      const S = v => typeof v === "string" ? v.trim().slice(0, 60) : "";
+      const legs = (out && Array.isArray(out.legs) ? out.legs : []).slice(0, 8).map(l => ({
+        flight: S(l.flight), from: S(l.from).toUpperCase().slice(0, 4), fromCity: S(l.fromCity), fromTz: validTz(S(l.fromTz)) ? S(l.fromTz) : "",
+        dep: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(S(l.dep)) ? S(l.dep).slice(0,16) : "",
+        to: S(l.to).toUpperCase().slice(0, 4), toCity: S(l.toCity), toTz: validTz(S(l.toTz)) ? S(l.toTz) : "",
+        arr: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(S(l.arr)) ? S(l.arr).slice(0,16) : ""
+      }));
+      if(!legs.length){ st.classList.add("err"); st.textContent = "No flights found in those screenshots. " + S(out && out.note) + " Try a clearer screenshot or type them in below."; }
+      else {
+        renderLegs(legs);
+        const missing = legs.some(l => !l.fromTz || !l.toTz || !l.dep || !l.arr);
+        st.textContent = `Found ${legs.length} flight${legs.length > 1 ? "s" : ""}. Check them below${missing ? " and fill in anything that's blank" : ""}, then make your plan.` + (out.note ? " Note: " + S(String(out.note)) : "");
+      }
+    }catch(e){
+      st.classList.add("err");
+      st.textContent = e && e.code === "cancelled" ? "Stopped." :
+        e && e.code === "not_granted" ? "Reading screenshots needs your permission. You can type the flights in below instead." :
+        e && e.code === "rate_limited" ? "Too many requests just now. Wait a minute and try again, or type the flights in below." :
+        "Couldn't read the screenshots. Try again, or type the flights in below.";
+    }finally{
+      $("#read-shots").disabled = !shots.length; $("#stop-read").hidden = true; readCtl = null;
+    }
+  });
+
+  // ---------- start ----------
+  fillSelect();
+  openTrip(lsGet(LS_LAST) || PRESET.id);
+  setInterval(tick, 30000);
+  connectCloud();
 })();
 </script>
 <!--artifact-body-end-->
