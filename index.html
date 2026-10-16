@@ -205,6 +205,16 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
       <div class="grid"><div class="f"><label for="f-dose">Melatonin dose</label><input id="f-dose" type="text" value="1 mg"></div></div>
     </div>
 
+    <div class="step">
+      <h3 id="airport-title">4 · Getting to the airport</h3>
+      <p class="hint">Used to work out when you need to get up on the day you fly.</p>
+      <div class="grid">
+        <div class="f"><label for="f-before">At the airport (min before take-off)</label><input id="f-before" type="number" inputmode="numeric" min="0" max="600" step="5" value="120"></div>
+        <div class="f"><label for="f-commute">Travel to the airport (min)</label><input id="f-commute" type="number" inputmode="numeric" min="0" max="600" step="5" value="60"></div>
+        <div class="f"><label for="f-ready">Time to get ready (min)</label><input id="f-ready" type="number" inputmode="numeric" min="0" max="600" step="5" value="45"></div>
+      </div>
+    </div>
+
     <div class="actions">
       <button class="btn primary" id="make-plan" type="button">Make my plan</button>
       <button class="btn link" id="cancel-edit" type="button">Cancel</button>
@@ -383,7 +393,12 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
     const ev = [];
     const pre = sg > 0 ? 1.5 : 1, post = sg > 0 ? 1.5 : 1;
     const preN = mag >= 6 ? 2 : mag >= 3 ? 1 : 0;
-    const airportStart = dep0 - 2.5*HR;
+    // getting to the airport: be there `airportBefore` min early, `commute` min away, `ready` min to get going
+    const mins = (v, dflt) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.min(n, 600) : dflt; };
+    const before = mins(trip.airportBefore, 120)*MIN, commute = mins(trip.commute, 60)*MIN, ready = mins(trip.ready, 45)*MIN;
+    const atAirport = dep0 - before, leaveHome = atAirport - commute;
+    const wakeBy = Math.floor((leaveHome - ready) / (15*MIN)) * 15*MIN;
+    const airportStart = wakeBy;          // no more sleep at home after this
     const inLeg = t => legs.find(l => t >= l.s && t < l.e);
     const cores = legs.filter(l => l.e - l.s >= HR).map(l => [l.s + 20*MIN, l.e - 20*MIN]);
     const [bh] = trip.bed.split(":").map(Number);
@@ -396,9 +411,19 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
     for(let k = -preN; k < 8; k++){
       const d = addDays(depDate, k);
       const c = sg * Math.min(mag, pre * (k + preN + 1));
-      const s = r15(at(Htz, bedNext ? addDays(d,1) : d, trip.bed) + c*HR);
-      const e = r15(at(Htz, addDays(d,1), trip.wake) + c*HR);
+      const usualBed = at(Htz, bedNext ? addDays(d,1) : d, trip.bed);
+      let s = r15(usualBed + c*HR);
+      let e = r15(at(Htz, addDays(d,1), trip.wake) + c*HR);
       if(s >= arr) break;
+      if(s < wakeBy && e > wakeBy){
+        // the night before an early start: wake in time to leave, and bring bedtime forward
+        // (up to an hour before your usual) so you still get as much of a full night as possible
+        const len = e - s, prevC = sg * Math.min(mag, pre * (k + preN));
+        e = wakeBy;
+        s = Math.max(Math.min(s, e - len), r15(usualBed - HR));
+        homeNights.push({s, e, c: prevC, home: true, early: true, short: e - s < len - 30*MIN});
+        continue;
+      }
       homeNights.push({s, e, c, home: true});
     }
     // nights on local destination time
@@ -412,7 +437,8 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
       const d = addDays(d0, j), flex = Math.min(R*0.5, 1.5);
       let s = r15(at(Dtz, bedNext ? addDays(d,1) : d, trip.bed) + (sg > 0 ? -flex : flex)*HR);
       const e = r15(at(Dtz, addDays(d,1), trip.wake) + (sg > 0 ? 0 : Math.min(R*0.5, 1))*HR);
-      if(s < arr + HR) s = r15(arr + 45*MIN);
+      const settled = arr + 45*MIN + commute;   // through the airport and to where you're staying
+      if(s < settled + 15*MIN) s = r15(settled + 15*MIN);
       if(e - s >= 2*HR) destNights.push({s, e, c: sg*prog, R, j});
       prog = Math.min(mag, prog + post);
     }
@@ -430,11 +456,13 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
         const full = b - a >= (n.e - n.s) - 10*MIN;
         let d;
         if(leg) d = "Eye mask and earplugs. If you can't sleep, rest with your eyes closed." + (sg > 0 ? " No melatonin now." : "");
+        else if(n.early) d = `Early start: get up at ${hm(n.e, Htz)} so you can leave for the airport at ${hm(leaveHome, Htz)}. ` +
+          (n.short ? "It's a shorter night than usual, so catch up on sleep on the plane." : "Bedtime is moved so you still get a full night's sleep.");
         else if(n.c) d = `That's ${hrs(Math.abs(n.c))} ${n.c > 0 ? "later" : "earlier"} than your usual ${hmStr(trip.bed)}. ` +
           (n.c > 0 ? "Stay up with the lights on until then, and sleep in (no early alarm)." : "Dim the lights an hour before, and get up with your alarm.");
         else d = "Your normal night's sleep.";
-        if(!leg && !full && b === airportStart) d += " A short night: you need to leave for the airport.";
-        blocks.push({k: leg ? "plane" : "sleep", s: a, e: b, t: leg ? `Sleep on the plane (${leg.flight || leg.from + "–" + leg.to})` : (n.c ? "Shifted bedtime" : "Sleep"), d});
+        if(!leg && !n.early && !full && b === airportStart) d += " A short night: you need to leave for the airport.";
+        blocks.push({k: leg ? "plane" : "sleep", s: a, e: b, t: leg ? `Sleep on the plane (${leg.flight || leg.from + "–" + leg.to})` : n.early ? "Bedtime before your flight" : (n.c ? "Shifted bedtime" : "Sleep"), d});
       });
     });
     destNights.forEach((n, i) => {
@@ -460,7 +488,7 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
       const clip = list => merge(list).flatMap(p => subtract([p], sleepSorted))
         .map(([a,b]) => [r15(Math.max(a, planStart)), r15(Math.min(b, planEnd))]).filter(([a,b]) => b - a >= 30*MIN);
       clip(seek).forEach(([a,b]) => {
-        const leg = inLeg(a + MIN), port = !leg && a >= airportStart && a < arr;
+        const leg = inLeg(a + MIN), port = !leg && a >= atAirport && a < arr;
         ev.push({k:"light", s:a, e:b,
           t: leg ? "Keep your light on" : port ? "Stay in bright light" : a >= arr ? "Get outside in daylight" : "Get bright light",
           d: leg ? "Reading light on, screen brightness up, walk the aisle. Stay awake if you can." :
@@ -501,9 +529,11 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
     // melatonin
     if(trip.mel && mag >= 3){
       if(sg < 0){
+        const melUsed = new Set();
         [...homeNights.filter(n => n.c), ...destNights.filter(n => n.R > 0)].forEach(n => {
           const blk = blocks.find(b => b.s <= n.s + MIN && b.e > n.s) || blocks.find(b => b.s >= n.s && b.s < n.e);
-          if(!blk) return;
+          if(!blk || melUsed.has(blk)) return;
+          melUsed.add(blk);
           ev.push({k:"mel", s:blk.s - 30*MIN, e:blk.s, t:`Take ${dose} melatonin`, d:"About 30 minutes before this sleep. It helps move your body clock earlier."});
         });
       } else {
@@ -515,7 +545,9 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
     }
 
     // flights and milestones
-    ev.push({k:"flight", s:r15(airportStart), mark:true, t:`Be at the airport (${legs[0].from})`, d:"About 2½ hours before departure. Check your airline's check-in cut-off."});
+    ev.push({k:"flight", s:wakeBy, mark:true, t:"Get up", d:`Time to get ready and leave for the airport.`});
+    ev.push({k:"flight", s:leaveHome, mark:true, t:"Leave for the airport", d:`${dur(commute)} to the airport.`});
+    ev.push({k:"flight", s:atAirport, mark:true, t:`Be at the airport (${legs[0].from})`, d:`${dur(before)} before your ${hm(dep0, Htz)} departure.`});
     legs.forEach(l => ev.push({k:"flight", s:l.s, e:l.e, t:`${l.flight ? l.flight + " · " : ""}${l.from} → ${l.to}`,
       d: `${dur(l.e - l.s)}.` + (l === legs[legs.length-1] ? ` Set your watch to ${dest} time when you board.` : "")}));
     ev.push({k:"flight", s:arr, mark:true, t:`Land in ${dest}`, d:`You're on ${dest} time from now on. Eat meals at local times.`});
@@ -561,12 +593,15 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
 
   function fillSelect(){
     const sel = $("#trip-select");
-    sel.innerHTML = allTrips().map(t => `<option value="${esc(t.id)}">${esc(t.title)}</option>`).join("");
+    sel.innerHTML = allTrips().map(t => `<option value="${esc(t.id)}">${esc(nice(t.title))}</option>`).join("");
     if(current) sel.value = current.id;
   }
 
+  const nice = s => String(s || "").replace(/(^|[\s\-\/])(\p{Ll})/gu, (m, p, ch) => p + ch.toUpperCase());
+  const tidy = t => t.preset ? t : {...t, homeCity: nice(t.homeCity), destCity: nice(t.destCity),
+    legs: t.legs.map(l => ({...l, fromCity: nice(l.fromCity), toCity: nice(l.toCity)}))};
   function openTrip(id){
-    const t = allTrips().find(x => x.id === id) || allTrips()[0];
+    const t = tidy(allTrips().find(x => x.id === id) || allTrips()[0]);
     current = t; lsSet(LS_LAST, t.id);
     try{ events = t.preset ? t.events() : generate(t); }catch(e){ events = []; }
     events.forEach(x => { if(x.mark) x.e = x.s; });
@@ -756,6 +791,9 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
     $("#f-wake").value = trip ? trip.wake : ($("#f-wake").value || "07:00");
     $("#f-mel").checked = trip ? !!trip.mel : true;
     $("#f-dose").value = trip ? (trip.dose || "1 mg") : "1 mg";
+    $("#f-before").value = trip && trip.airportBefore != null ? trip.airportBefore : 120;
+    $("#f-commute").value = trip && trip.commute != null ? trip.commute : 60;
+    $("#f-ready").value = trip && trip.ready != null ? trip.ready : 45;
     shots = []; $("#thumbs").innerHTML = ""; $("#read-shots").disabled = true;
     $("#shot-status").textContent = ""; $("#shot-status").classList.remove("err");
     $("#form-error").hidden = true;
@@ -780,9 +818,10 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
       if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(l.dep) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(l.arr)) return fail(`Flight ${i+1}: add the departure and arrival date and time.`);
       l.dep = l.dep.slice(0,16); l.arr = l.arr.slice(0,16);
       if(atLocal(l.toTz, l.arr) <= atLocal(l.fromTz, l.dep)) return fail(`Flight ${i+1} arrives before it departs. Check the dates, and that each time is local to its airport.`);
-      l.fromCity = l.fromCity || l.from; l.toCity = l.toCity || l.to;
+      l.fromCity = nice(l.fromCity || l.from); l.toCity = nice(l.toCity || l.to);
     }
     const bed = $("#f-bed").value, wake = $("#f-wake").value;
+    const num = (sel, d) => { const n = parseInt($(sel).value, 10); return Number.isFinite(n) && n >= 0 ? Math.min(n, 600) : d; };
     if(!bed || !wake) return fail("Add your usual bedtime and wake-up time.");
     legs.sort((a,b) => atLocal(a.fromTz, a.dep) - atLocal(b.fromTz, b.dep));
     const a = legs[0], z = legs[legs.length-1];
@@ -792,7 +831,8 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
       created: editing ? editing.created : Date.now(),
       title: `${a.fromCity} → ${z.toCity} · ${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`,
       homeCity: a.fromCity, homeTz: a.fromTz, destCity: z.toCity, destTz: z.toTz,
-      legs, bed, wake, mel: $("#f-mel").checked, dose: $("#f-dose").value.trim() || "1 mg"
+      legs, bed, wake, mel: $("#f-mel").checked, dose: $("#f-dose").value.trim() || "1 mg",
+      airportBefore: num("#f-before", 120), commute: num("#f-commute", 60), ready: num("#f-ready", 45)
     };
     trips = trips.filter(t => t.id !== trip.id).concat(trip);
     await persist();
@@ -816,6 +856,7 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
     $("#shot-step").hidden = true;
     $("#legs-title").textContent = "Your flights";
     $("#sleep-title").textContent = "Your usual sleep at home";
+    $("#airport-title").textContent = "Getting to the airport";
   }
   function addShots(files){
     const max = window.__maxShots || 4;
